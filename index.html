@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research Paper Summaries</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      color-scheme: light;
+      --bg: #fbfaf7;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #667085;
+      --line: #d9dee7;
+      --accent: #1f6f68;
+      --accent-dark: #16534e;
+      --mark: #d89a2b;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    main {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      padding: 0 0 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 10px 0 0;
+      max-width: 720px;
+      color: var(--muted);
+    }
+    .count {
+      min-width: 116px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      text-align: center;
+    }
+    .count strong {
+      display: block;
+      font-size: 26px;
+      line-height: 1;
+      color: var(--accent-dark);
+    }
+    .count span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .reports {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      margin-top: 28px;
+    }
+    article {
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .thumb {
+      display: grid;
+      grid-template-columns: 28px 1fr 28px;
+      gap: 8px;
+      align-items: center;
+      min-height: 92px;
+      padding: 18px;
+      background:
+        linear-gradient(90deg, rgba(31, 111, 104, 0.12), rgba(216, 154, 43, 0.12)),
+        repeating-linear-gradient(0deg, transparent 0, transparent 9px, rgba(31, 41, 51, 0.08) 10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .node {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      background: #fff;
+    }
+    .path {
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--mark));
+      border-radius: 999px;
+    }
+    .content {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      padding: 18px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .meta {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .summary {
+      margin: 14px 0 18px;
+      color: #344054;
+    }
+    a.report-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin-top: auto;
+      padding: 9px 14px;
+      border-radius: 7px;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    a.report-link:hover,
+    a.report-link:focus {
+      background: var(--accent-dark);
+      outline: none;
+    }
+    footer {
+      margin-top: 30px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #eef2f6;
+      color: #243447;
+    }
+    @media (max-width: 640px) {
+      main { width: min(100% - 24px, 1040px); padding-top: 28px; }
+      header { grid-template-columns: 1fr; }
+      .count { width: 116px; }
+      article { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Research Paper Summaries</h1>
+      <p class="subtitle">静态论文总结页，适合通过 GitHub Pages 发布。每个报告都是独立 HTML 文件，可直接阅读或打印。</p>
+    </div>
+    <div class="count" aria-label="报告数量">
+      <strong>1</strong>
+      <span>report</span>
+    </div>
+  </header>
+
+  <section class="reports" aria-label="Generated HTML reports">
+    <article>
+      <div class="thumb" aria-hidden="true">
+        <div class="node"></div>
+        <div class="path"></div>
+        <div class="node"></div>
+      </div>
+      <div class="content">
+        <h2>Thinking with Visual Primitives</h2>
+        <p class="meta">中文论文总结 · 2026-05-01 · HTML</p>
+        <p class="summary">围绕 Reference Gap、视觉原语、训练流程、实验结果与方法局限整理的中文打印版报告。</p>
+        <a class="report-link" href="Thinking_with_Visual_Primitives_summary_zh.html">打开报告</a>
+      </div>
+    </article>
+  </section>
+
+  <footer>
+    <p>GitHub Pages 可直接从仓库根目录发布本页。入口文件为 <code>index.html</code>。</p>
+  </footer>
+</main>
+</body>
+</html>

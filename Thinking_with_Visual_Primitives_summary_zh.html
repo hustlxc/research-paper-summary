@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thinking with Visual Primitives 论文总结</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto;
+      max-width: 880px;
+      color: #111827;
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.68;
+    }
+    main { padding: 28px 24px 48px; }
+    h1, h2, h3 { line-height: 1.25; color: #0f172a; }
+    h1 { font-size: 26px; margin: 0 0 10px; }
+    h2 {
+      font-size: 19px;
+      margin: 28px 0 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #d1d5db;
+      page-break-after: avoid;
+    }
+    h3 { font-size: 16px; margin: 18px 0 8px; }
+    p, li { orphans: 3; widows: 3; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
+    th, td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    .meta {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 12px;
+      margin: 14px 0 20px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+    }
+    .label { color: #4b5563; font-weight: 600; }
+    .note { color: #374151; }
+    @media print {
+      body { max-width: none; font-size: 11pt; }
+      main { padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Thinking with Visual Primitives</h1>
+  <section class="meta">
+    <div class="label">作者</div>
+    <div>Ruijie Lu, Yiyang Ma, Xiaokang Chen, Lingxiao Luo, Zhiyu Wu, Zizheng Pan, Xingchao Liu, Yutong Lin, Hao Li, Wen Liu, Zhewen Hao, Xi Gao, Shaoheng Nie, Yixuan Wei, Zhenda Xie, Ting Chen, Gang Zeng</div>
+    <div class="label">来源</div>
+    <div>DeepSeek-AI、Peking University、Tsinghua University 技术报告；本地文件：/Users/lixiangchun/Downloads/Thinking_with_Visual_Primitives.pdf</div>
+    <div class="label">年份</div>
+    <div>2026（PDF 元数据创建日期为 2026-04-30）</div>
+    <div class="label">链接</div>
+    <div>PDF 内未注明 DOI 或 arXiv URL</div>
+    <div class="label">总结日期</div>
+    <div>2026-05-01</div>
+  </section>
+
+  <h2>文章摘要</h2>
+  <p>这篇技术报告讨论多模态大模型在复杂视觉推理中的一个核心缺口：现有链式思维主要在语言空间运行，即使模型通过高分辨率裁剪、动态 patch 等方式看清了图像细节，仍可能在密集计数、空间关系、多步拓扑搜索中失去对视觉对象的精确指代。作者把这个问题称为 “Reference Gap”，并将其区别于单纯看不清的感知问题。论文的主张是，点和边界框不应只是检测任务的输出或事后校验，而应成为推理轨迹内部的 “minimal units of thought”。模型在推理时一边生成自然语言，一边生成坐标化的点或框，从而能够 “point while it reasons”，把抽象判断锚定到图像坐标。</p>
+  <p>方法上，模型基于 DeepSeek-V4-Flash 的 MoE 语言骨干，视觉端使用 DeepSeek-ViT，并通过 3×3 空间 token 压缩与 Compressed Sparse Attention 降低视觉 KV 缓存负担。论文给出的 756×756 图像例子中，ViT patch token 经压缩后进入 LLM，再被 CSA 压到 81 个视觉 KV 条目，整体压缩率约为 7056 倍。训练分为预训练、冷启动数据构造、专家化 SFT/RL、统一 RFT 与 On-Policy Distillation。预训练阶段统一学习框与点的输出格式；后训练阶段则围绕计数、空间推理与通用 VQA、迷宫导航、路径追踪四类任务构造高精度冷启动样本，并用规则或生成式奖励模型监督格式、质量和答案正确性。数据工程是论文的重要部分：框标注网页数据从 97,984 个相关数据源经过语义审查和几何质量审查保留 31,701 个数据源，最终得到 “over 40 million” 高质量样本；冷启动阶段还构造约 1 万计数样本、9 千空间/VQA 样本、46 万迷宫样本和 12.5 万路径追踪样本。</p>
+  <p>实验显示，这一范式的收益集中在需要显式对象锚定和长链空间组合的任务上。Table 1 中，模型在 Pixmo-Count、DS_Finegrained_Counting、MIHBench、SpatialMQA、DS_Spatial_Reasoning、DS_Maze_Navigation、DS_Path_Tracing 等指标上达到第一或并列第一；尤其在迷宫导航和路径追踪上，相比 GPT-5.4、Claude-Sonnet-4.6、Gemini-3-Flash 等前沿模型有明显优势。与此同时，Figure 1 强调它以较低视觉 token 预算取得较高平均分。不过论文也明确承认，当前方法受输入分辨率、触发词依赖、点原语跨场景泛化不足等限制。因此，这篇文章的贡献不只是提出一个视觉推理模型，更是提出一种关于多模态推理媒介的判断：通往 System-2 式多模态智能的路径，并非只靠 “seeing more pixels”，而要建立语言和视觉之间更精确的指代桥梁。</p>
+
+  <h2>1. 提出问题</h2>
+  <p>论文提出的核心问题是：多模态大模型在视觉问答中已经具备较强感知能力，但其显式推理仍主要依赖自然语言。自然语言适合描述类别、关系和意图，却不擅长在连续视觉空间中稳定、无歧义地指向某个对象、路径或局部结构。作者因此把瓶颈定位为 “Reference Gap”：不是模型完全看不到，而是看到了之后，语言化思维链无法持续绑定到正确视觉实体。</p>
+  <p>这个问题在密集场景尤其明显。计数任务要求模型逐个对象建立对应关系；空间推理要求模型在多对象之间保持属性、位置、关系链的稳定绑定；拓扑推理还要求模型沿着迷宫或曲线连续追踪。论文指出，若思维链只能说“左边那个”“中间的物体”“沿这条线走”，对象指代就容易漂移，后续推理会发生级联错误。作者也把现有高分辨率视觉策略概括为主要处理 “Perception Gap”，强调“看清”不等于“推理清楚”。</p>
+
+  <h2>2. 分析问题</h2>
+  <p>作者把问题拆成三个层次。第一层是表示层：视觉世界是坐标化、连续、密集的，而语言描述是离散、压缩且常含歧义的。第二层是任务层：计数、空间关系、迷宫导航、路径追踪都要求模型维护对象级或路径级的中间状态，单纯文本 CoT 容易丢失这个状态。第三层是训练层：如果视觉标记只在答案末尾出现，或只作为后验检测框，就不能成为模型推理过程本身的组成部分。</p>
+  <p>因此，论文把边界框和点定义为视觉原语。框更适合定位具有面积和尺度的对象，点更适合路径、轨迹和拓扑连接等抽象指代。作者的关键分析是，视觉原语要从“证据”变成“思维媒介”：在计数中用框完成系统扫描和累加，在空间推理中用框锚定每个候选对象，在迷宫和路径追踪中用点记录探索、回溯和连续轨迹。Fig. 3 至 Fig. 6 的冷启动样例展示了这种结构化推理轨迹：先分析意图，再用视觉原语定位或追踪，最后给出答案。</p>
+
+  <h2>3. 解决问题</h2>
+  <p>解决方案由模型结构、数据构造和训练流程共同组成。结构上，模型采用类似 LLaVA 的视觉-语言拼接架构，视觉特征进入 DeepSeek-V4-Flash 语言骨干；通过 ViT 输出端 3×3 token 压缩和 CSA 的 KV 缓存压缩，降低视觉上下文成本。数据上，预训练阶段建立框和点的统一格式，坐标归一化到 0 至 999，并将框任务写成带 <code>&lt;|ref|&gt;</code> 与 <code>&lt;|box|&gt;</code> 的结构化响应，点任务写成 <code>&lt;|point|&gt;</code> 序列。</p>
+  <p>后训练采用 “train specialists—then—merge” 策略。先分别训练 thinking with grounding 的框专家和 thinking with pointing 的点专家，再用专家模型生成 RFT 数据，最后通过 OPD 把两个专家能力合并进统一模型。RL 阶段不直接监督思维过程中的所有原语，而是用格式奖励、质量奖励和任务准确性奖励来约束输出：计数使用相对误差的平滑奖励；空间/VQA 使用 LLM 评分；迷宫导航检查合法连通、墙体违规、可达区域和最终路径；路径追踪则从轨迹贴合、端点正确、连续性和答案正确性共同评分。</p>
+  <table>
+    <thead>
+      <tr>
+        <th>任务或指标</th>
+        <th>本文模型结果</th>
+        <th>对照含义</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Pixmo-Count EM</td>
+        <td>89.2</td>
+        <td>高于 Gemini-3-Flash 的 88.2</td>
+      </tr>
+      <tr>
+        <td>DS_Finegrained_Counting EM</td>
+        <td>88.7</td>
+        <td>高于 Qwen3-VL-235B-A22B-Thinking 的 87.2</td>
+      </tr>
+      <tr>
+        <td>SpatialMQA ACC</td>
+        <td>69.4</td>
+        <td>高于 Gemini-3-Flash 的 67.0</td>
+      </tr>
+      <tr>
+        <td>DS_Maze_Navigation ACC</td>
+        <td>66.9</td>
+        <td>显著高于其他模型约 49 至 51 的区间</td>
+      </tr>
+      <tr>
+        <td>DS_Path_Tracing ACC</td>
+        <td>56.7</td>
+        <td>高于 GPT-5.4 的 46.5</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>这些结果支持论文的核心判断：视觉原语带来的增益不只是检测框更准，而是让模型在中间推理中持续保留指代对象和空间路径。Table 1 也显示，模型并非所有指标都第一，例如 CountQA 低于 Gemini-3-Flash，CV-Bench 略低于 Gemini-3-Flash，OmniSpatial 与 Gemini-3-Flash 接近；这使结论更准确地限定为“在聚焦的计数、空间和拓扑任务上具有竞争力”，而不是宣称整体多模态能力全面领先。</p>
+
+  <h2>4. 赞成什么</h2>
+  <p>论文赞成一种更强的具身化、坐标化推理观：多模态模型不应只把视觉作为输入，把语言作为唯一思维载体，而应在思维链中直接操作视觉锚点。作者借用人类在数物体、走迷宫时用手指指点和回溯的认知现象，说明点和框可以降低记忆负担、稳定对象对应关系，并使多步空间推理更可验证。</p>
+  <p>论文也赞成工程上的高效路线。与单纯扩大视觉 token 数量相比，它支持用压缩架构和明确指代机制共同提升推理效率。数据层面，作者支持大规模、多样化但严格清洗的网页框数据，也支持用合成任务补齐真实数据难以覆盖的拓扑和路径推理能力。训练层面，论文继承并组合了 SFT、GRPO、RFT、OPD 等范式，但把奖励设计聚焦到视觉原语的格式、质量、路径合法性和最终答案一致性上。</p>
+
+  <h2>5. 反对什么</h2>
+  <p>论文首先反对把多模态推理瓶颈简化为分辨率不足。作者并不否认感知提升的重要性，但认为只靠更清晰的裁剪、更大的图像 token 预算，无法解决语言指代在复杂布局中的歧义。它也反对把 grounding 仅当作事后验证：如果框或点只在最终答案中出现，模型在中间推理时仍可能沿着错误对象或错误路径推下去。</p>
+  <p>论文还反对低质量、不可泛化的标注进入训练流程。例如无意义类别码、私人实体标签、主观或含糊缩写、漏标严重、框截断、覆盖全图的“mega boxes”等都会破坏视觉-语言对齐。最后，作者对自己的方法也提出限定：受输入分辨率约束，细粒度场景中原语输出仍可能不精确；当前能力需要显式触发词；点原语解决复杂拓扑问题的跨场景泛化仍有限。这些限制意味着该框架更像是一个有力方向，而不是已经完成的通用视觉推理解法。</p>
+</main>
+</body>
+</html>
