@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LLM-as-a-Verifier 中文总结</title>
+  <title>LLM-as-a-Verifier: A General-Purpose Verification Framework — 论文摘要</title>
   <style>
     @page { size: A4; margin: 18mm 16mm; }
     * { box-sizing: border-box; }
@@ -15,7 +15,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
         "Microsoft YaHei", Arial, sans-serif;
       font-size: 15px;
-      line-height: 1.68;
+      line-height: 1.65;
     }
     main { padding: 28px 24px 48px; }
     h1, h2, h3 { line-height: 1.25; color: #0f172a; }
@@ -29,15 +29,43 @@
     }
     h3 { font-size: 16px; margin: 18px 0 8px; }
     p, li { orphans: 3; widows: 3; }
+    blockquote {
+      margin: 10px 0;
+      padding: 8px 12px;
+      border-left: 3px solid #2563eb;
+      background: #f8fafc;
+      color: #1f2937;
+    }
+    pre {
+      margin: 12px 0;
+      padding: 12px 16px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 14px;
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+    }
+    em {
+      color: #374151;
+    }
     table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
     th, td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
     th { background: #f3f4f6; text-align: left; }
-    code {
-      padding: 1px 4px;
-      border-radius: 4px;
-      background: #eef2f7;
-      color: #1f2937;
-    }
     .meta {
       display: grid;
       grid-template-columns: 120px 1fr;
@@ -48,6 +76,14 @@
       background: #f9fafb;
     }
     .label { color: #4b5563; font-weight: 600; }
+    .note-box {
+      margin: 12px 0;
+      padding: 10px 14px;
+      background: #fef3c7;
+      border-left: 3px solid #f59e0b;
+      font-size: 14px;
+      color: #92400e;
+    }
     @media print {
       body { max-width: none; font-size: 11pt; }
       main { padding: 0; }
@@ -59,94 +95,108 @@
 <main>
   <h1>LLM-as-a-Verifier: A General-Purpose Verification Framework</h1>
   <section class="meta">
-    <div class="label">作者</div>
-    <div>Jacky Kwok, Shulu Li, Pranav Atreya, Yuejiang Liu, Marco Pavone, Ion Stoica, Azalia Mirhoseini</div>
-    <div class="label">来源</div>
-    <div>Notion research page；Stanford University、UC Berkeley、NVIDIA；posted April 9, 2026</div>
-    <div class="label">年份</div>
-    <div>2026</div>
-    <div class="label">链接</div>
-    <div><a href="https://llm-as-a-verifier.notion.site/">https://llm-as-a-verifier.notion.site/</a></div>
-    <div class="label">总结日期</div>
-    <div>2026-05-07</div>
+    <div class="label">作者</div><div>Jacky Kwok*, Shulu Li*, Pranav Atreya, Yuejiang Liu, Marco Pavone, Ion Stoica, Azalia Mirhoseini（* 核心贡献，† 项目负责人，§ 共同指导）</div>
+    <div class="label">机构</div><div>Stanford University (Stanford AI Lab), UC Berkeley (Sky Computing Lab), NVIDIA</div>
+    <div class="label">年份</div><div>2026 年 4 月</div>
+    <div class="label">链接</div><div><a href="https://llm-as-a-verifier.notion.site/">llm-as-a-verifier.notion.site</a></div>
+    <div class="label">类型</div><div>Notion 技术博客（非正式学术论文）</div>
+    <div class="label">总结日期</div><div>2026-05-07</div>
   </section>
 
+  <div class="note-box">
+    <strong>注意：</strong>本文来源为 Notion 技术博客，非经同行评议的正式论文。写作风格精简，缺少完整的方法论推导、Related Work 对比、消融实验和局限性讨论等学术论文常见章节。以下摘要基于博客原文内容并结合对方法逻辑的推断，标注为推断之处以括号说明。
+  </div>
+
   <h2>文章摘要</h2>
-  <p>这项研究提出 LLM-as-a-Verifier，一个面向长程智能体轨迹的通用验证框架。它针对的是现有 LLM-as-a-Judge 在复杂任务评估中的一个实际瓶颈：传统 judge prompt 往往让模型输出单个离散分数 token，例如 1 到 8，再用最高概率分数作为最终评价；但在比较复杂 agent trajectories 时，这种方式容易把两个明显不同的轨迹判成同分，导致无法选择更好轨迹。页面在 Motivation 中指出，粗粒度评分在 Terminal-Bench 上导致 27% ties，这说明粗粒度评分不仅降低准确性，还直接妨碍 test-time scaling 中的候选轨迹选择。</p>
-  <p>作者把“judge”和“verifier”区分开来：judge 更像形成整体意见并作出决定，verifier 则确认某件事是否真实或正确，需要更细致的评估。基于这个区别，LLM-as-a-Verifier 不再把每次评价压缩为单个离散分数，而是从 score token 的条件概率分布中估计连续 reward，并通过三种扩展增强验证质量：增加 repeated verification 次数，扩大 score token granularity，将整体评价分解为多个 criteria。研究页的 TL;DR 称，验证准确率会随着这些维度扩展而持续提高，并报告 LLM-as-a-Verifier 在 Terminal-Bench 上达到 “78.9% pairwise verification accuracy”。</p>
-  <p>方法上，给定任务、语言模型、评价 criterion 和两个候选轨迹，框架构造包含 <code>&lt;score_A&gt;</code> 和 <code>&lt;score_B&gt;</code> 的评分提示，从两个 score token 位置抽取 top-logprobs。它对每个 criterion、每次 repeated verification、每个 score token 的概率乘以映射后的标量值，再求平均得到轨迹 reward。为了在多条候选轨迹中选择最佳答案，系统采用 round-robin tournament：每两条轨迹成对比较，reward 更高者获得一次胜利，最终选择胜场最多的轨迹。这使 verifier 可以作为 test-time trajectory reward model，在多个 agent scaffold 和模型采样轨迹之间进行重排序。</p>
-  <p>实验结果显示，LLM-as-a-Verifier 在 Terminal-Bench 2.0 和 SWE-Bench Verified 上取得强表现。页面顶部称其在 Terminal-Bench 2 上达到 86.4%，在 SWE-Bench Verified 上达到 77.8%；并说明使用 ForgeCode 和 mini-swe-agent 作为 scaffolds，Terminal-Bench 中从 Claude Opus 4.6 采样 5 条轨迹，SWE-Bench 中从 Claude Opus 4.6、Gemini 3 Flash 和 Claude Opus 4.5 各采样 3 条轨迹，Gemini 2.5 Flash 用作 verifier。核心对比中，LLM-as-a-Verifier 在 k=1、4、16 repeated verification 下分别达到 74.7%、77.0%、77.4% accuracy，tie rate 始终为 0；对应 LLM-as-a-Judge 为 57.0%、67.4%、70.2%，且仍有 26.5%、11.5%、5.4% ties。结论是：细粒度概率评分、重复验证集成和 criteria decomposition 可以把 LLM 评价器从粗糙 judge 推向更适合 agent test-time scaling 的 verifier。</p>
+
+  <p>本文提出了 <strong>LLM-as-a-Verifier</strong> —— 一个通用验证框架，旨在取代目前广泛使用的 LLM-as-a-Judge（以 LLM 作为评判者）范式，为智能体（agent）轨迹的质量评估提供更精细、更可靠的自动反馈信号。该工作的核心动机源于一个关键观察：标准的 LLM-as-a-Judge 方法要求模型输出单个离散评分 token（如 1 到 8 分），然后选取概率最高的 token 作为最终评分。这种粗粒度打分方式在面对复杂的智能体轨迹时常常无法区分优劣——两条质量不同的轨迹可能获得相同分数，从而导致大量"平局"。论文报告在 Terminal-Bench 上，标准 LLM-as-a-Judge 的平局率高达 27%。</p>
+
+  <p>为解决这一问题，作者将概念从"评判"（judge，形成整体意见并做出决策）上升为"验证"（verifier，确认真实性或正确性，需要更详细的评估），并从三个维度进行扩展：（1）<strong>评分粒度缩放</strong>——不直接取概率最高的 token，而是利用整个评分 token 的概率分布，将评分 token 集从 8 个扩展到最多 20 个，减少量化误差；（2）<strong>重复验证</strong>——对同一条轨迹进行多次独立验证（k = 1, 4, 16），通过集成降低单次评分的偏差和噪声；（3）<strong>标准分解</strong>——将整体轨迹质量拆分为三个互补维度分别评估：规范符合度（路径、命名等任务要求）、输出正确性（验证输出格式与预期结果是否匹配）、错误信号（轨迹是否无失败信号）。最终奖励值通过加权公式 <code>R(t,τ) = (1/CK) · Σ_c Σ_k Σ_g p_θ(v_g | t, c, τ) · φ(v_g)</code> 计算，即对多条标准、多次重复、多个评分粒度的概率求加权平均。</p>
+
+  <p>在 <strong>Terminal-Bench 2</strong> 和 <strong>SWE-Bench Verified</strong> 两个长周期基准上的实验表明：LLM-as-a-Verifier 的成对验证准确率达 78.9%，平局率为 0%（对比 Judge 的 26.5% 平局率）。当用作轨迹奖励模型进行测试时缩放（test-time scaling）时，该方法将 Terminal-Bench 的下游成功率从 81.8% 提升至 <strong>86.4%</strong>（SOTA），将 SWE-Bench Verified 提升至 <strong>77.8%</strong>（SOTA）。方法在多种智能体脚手架（ForgeCode、Terminus-Kira、Terminus 2）上表现出一致的提升效果，证明其具有插拔式的通用性。验证模型使用 Gemini 2.5 Flash，轨迹采样来自 Claude Opus 4.6、Gemini 3 Flash 和 Claude Opus 4.5 等前沿模型。</p>
 
   <h2>1. 提出问题</h2>
-  <p>本文要解决的问题是：如何为长程 agent 任务中的候选轨迹提供可靠、可区分、可扩展的验证信号。Terminal-Bench、SWE-Bench Verified 这类任务不是简单单步问答，轨迹中包含命令执行、代码修改、错误处理和最终输出。若评价器只输出单个粗粒度分数，它常常无法区分两个轨迹的细微质量差异，尤其是在两者都部分正确或部分失败时。</p>
-  <p>研究页把传统方法称为 LLM-as-a-Judge，并指出这种方法通常让模型输出 “a score token (e.g., 1–8)”。问题在于单个 token 的离散标签会产生量化误差；当两个候选轨迹都被评为 4 分时，系统无法判断哪个更值得选择。页面明确说，标准 judge “failing to discriminate between them”，这就是本文提出 verifier 的直接动机。</p>
+
+  <p>论文试图解决的核心问题是：<strong>如何为复杂智能体轨迹提供精细、可靠且无平局的自动质量评估？</strong></p>
+
+  <p>作者首先诊断了当前 LLM-as-a-Judge 范式的根本缺陷。标准的做法是提示模型输出一个评分 token（如 1–8），然后选取概率最高的 token 作为最终离散评分。这一做法有两个关键问题：</p>
+
+  <p>第一，<strong>粗粒度评分导致的区分度不足</strong>。当比较两条复杂智能体轨迹时，标准方法常常给予相同评分——<em>"standard LLM-as-a-Judge often assigns the same score (e.g., both trajectories receive a score of 4), resulting in a tie and failing to discriminate between them"</em>。在 Terminal-Bench 上，这种粗粒度评分导致 27% 的平局。对于需要从多个候选轨迹中选出最优轨迹的下游任务而言，高平局率意味着评估信号几乎失效。</p>
+
+  <p>第二，<strong>单 token 离散化丢失了概率分布中的丰富信息</strong>。LLM 对每个评分 token 给出的概率分布本身就包含了不确定性、倾向性和细微差异的信号，但 argmax 操作将这些信息全部丢弃。作者在此提出了从"评判"到"验证"的范式转变：评判者形成一个整体意见并做出决策，而验证者确认真实性或正确性，需要更详细的评估——<em>"a judge is one who forms an overall opinion and assigns a decision, whereas a verifier is one who confirms the truth or correctness of something and requires more detailed evaluations"</em>。</p>
+
+  <p>此外，该问题在长周期、多步骤的智能体基准（如 Terminal-Bench 和 SWE-Bench）上尤为突出，因为这类任务中轨迹的差异往往是微小而关键的（如一个路径命名错误、一个中间步骤的失败信号），整体性的粗粒度评分根本无法捕捉这些差异。</p>
 
   <h2>2. 分析问题</h2>
-  <p>作者把验证失败拆解为三个来源。第一是 scoring granularity 不足：1 到 8 的离散分数太粗，会把不同质量轨迹压到同一分桶。第二是单次验证噪声：一次 LLM 判断可能受 prompt、采样、上下文截断或局部偏见影响。第三是整体评分过难：让模型一次性判断整条复杂轨迹的总体质量，会混合规格满足、输出格式、错误信号等不同因素，降低可解释性和准确性。</p>
-  <p>因此，LLM-as-a-Verifier 的分析路径不是简单换一个更强模型，而是改变评价信号的数学形式。它保留模型对每个 score token 的概率分布，而不是只取最大概率 token；它重复执行验证以平均噪声；它把 verification criteria 分解为 Specification、Output、Errors 等互补因素。页面 Takeaway 总结说，“Scaling the scoring token granularity reduces quantization error”，并认为 repeated verification 有助于平均个体验证中的偏差与噪声。</p>
+
+  <p>作者将验证问题建模为一个<strong>成对轨迹比较的概率框架</strong>，并从中识别出可以通过三个可扩展维度来改进评分质量。</p>
+
+  <p><strong>数学形式化。</strong>设 <strong>V</strong><sub>score</sub> = {<strong>v</strong><sub>1</sub>, …, <strong>v</strong><sub>G</sub>} 为离散评分 token 的有序集合。给定任务提示 <em>t</em>、语言模型 <em>p</em><sub>θ</sub>、评估标准 <em>c</em> 以及两条候选轨迹 <em>τ</em><sub>i</sub> 和 <em>τ</em><sub>j</sub>，作者构建评分提示并获得条件概率分布 <em>p</em><sub>θ</sub>(<em>v</em> | <em>t</em>, <em>c</em>, <em>τ</em><sub>i</sub>) 和 <em>p</em><sub>θ</sub>(<em>v</em> | <em>t</em>, <em>c</em>, <em>τ</em><sub>j</sub>)，通过提取 top logprobs 获得。与传统方法的关键区别在于：<strong>不将分布退化为单个离散评分，而是保留和使用整个概率分布</strong>。奖励的近似值为：</p>
+
+<pre><code>R(t,τ) = (1 / CK) · Σ_{c=1}^{C} Σ_{k=1}^{K} Σ_{g=1}^{G} p_θ(v_g | t,c,τ) · φ(v_g)</code></pre>
+
+  <p>其中 <em>C</em> 为标准数量，<em>K</em> 为重复次数，<em>G</em> 为评分粒度级别，<em>φ</em>(<em>v</em><sub>g</sub>) 将每个评分 token 映射为标量值。</p>
+
+  <p><strong>三个可扩展维度。</strong>（1）<strong>评分粒度 G</strong>：从 8 个 token 扩展到最多 20 个（使用字母编码代替数字以启用 logprob 提取），更细的粒度减少了量化误差，使奖励能更精确地近似连续奖励曲面。（2）<strong>重复验证 K</strong>：单次验证可能存在偏差或噪声，通过多次独立验证取平均（集成策略），可以有效平滑这些随机误差。（3）<strong>标准分解 C = 3</strong>：将复杂的整体质量判断拆分为三个互补维度的二元验证任务——规范符合度（Specification：轨迹是否满足所有任务要求，如路径、命名等）、输出正确性（Output：验证输出格式是否匹配预期结果）、错误信号（Errors：轨迹是否无失败信号）。每个维度都比"这条轨迹总体上好不好"更简单、更明确。</p>
+
+  <p><strong>成对锦标赛机制。</strong>为从 N 个候选中选出最优轨迹，采用轮询锦标赛（round-robin tournament）：对每对 <em>(i, j)</em> 分别计算 <em>R</em>(<em>t</em>, <em>τ</em><sub>i</sub>) 和 <em>R</em>(<em>t</em>, <em>τ</em><sub>j</sub>)，奖励高者获胜；在所有 C(N, 2) 对中获胜次数最多的轨迹即为最终输出。这一设计将 K 路选择问题转化为一系列二选一比较，既避免了直接排名的不稳定性，又从根本上消除了平局（因为奖励值是连续的实数，不再是离散的等级标签）。</p>
 
   <h2>3. 解决问题</h2>
-  <p>解决方案是把 LLM 评价器改造成分布式 reward estimator。给定两条轨迹 A 和 B，verifier 分别在 <code>&lt;score_A&gt;</code> 与 <code>&lt;score_B&gt;</code> 位置抽取 score token 的概率分布；每个 token 通过函数映射到标量分值；再跨 criteria 数量、重复验证次数和 score token 粒度求平均，得到轨迹 reward。为了支持更多候选轨迹，系统用 pairwise round-robin tournament 聚合比较结果，选择胜场最多的轨迹作为最终答案。</p>
-  <p>该方案可以作为 test-time scaling 的轨迹奖励模型。页面说明，在 Terminal-Bench 中使用 ForgeCode scaffold 并从 Claude Opus 4.6 采样 5 条轨迹；在 SWE-Bench 中使用 mini-swe-agent，并从 Claude Opus 4.6、Gemini 3 Flash、Claude Opus 4.5 各采样 3 条轨迹；Gemini 2.5 Flash 作为 verifier。这样，核心提升来自验证与重排序，而不是只依赖单次生成模型输出。</p>
+
+  <p>论文的解决方案包含方法设计、实验验证和泛化性测试三个层面。</p>
+
+  <p><strong>方法设计。</strong>LLM-as-a-Verifier 的提示模板将 LLM 定位为"专家评审者"角色：</p>
+
+  <blockquote>
+    "You are an expert [domain] reviewer. You will see a task description and two trajectories. Evaluation Criteria: [domain specific criteria]. Task: {task prompt} Trajectory A: {A} Trajectory B: {B}. Carefully analyze each trajectory, then provide your final scores: &lt;score_A&gt; INTEGER_1_TO_8 &lt;/score_A&gt; &lt;score_B&gt; INTEGER_1_TO_8 &lt;/score_B&gt;"
+  </blockquote>
+
+  <p>与传统 Judge 的关键区别在于：不使用 argmax 取最高概率 token，而是提取所有评分 token 的完整概率分布，按加权公式计算连续奖励值。实验中使用 Gemini 2.5 Flash 作为验证模型，轨迹由 Claude Opus 4.6、Gemini 3 Flash 和 Claude Opus 4.5 采样生成。</p>
+
+  <p><strong>核心实验结果。</strong></p>
+
   <table>
-    <thead>
-      <tr>
-        <th>实验项</th>
-        <th>LLM-as-a-Judge</th>
-        <th>LLM-as-a-Verifier</th>
-        <th>说明</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Verification accuracy, k=1</td>
-        <td>57.0%</td>
-        <td>74.7%</td>
-        <td>单次验证已有明显提升</td>
-      </tr>
-      <tr>
-        <td>Verification accuracy, k=4</td>
-        <td>67.4%</td>
-        <td>77.0%</td>
-        <td>重复验证后仍领先</td>
-      </tr>
-      <tr>
-        <td>Verification accuracy, k=16</td>
-        <td>70.2%</td>
-        <td>77.4%</td>
-        <td>页面称 verifier 仍高 7%</td>
-      </tr>
-      <tr>
-        <td>Tie rate, k=1 / 4 / 16</td>
-        <td>26.5% / 11.5% / 5.4%</td>
-        <td>0% / 0% / 0%</td>
-        <td>概率 reward 消除同分选择失败</td>
-      </tr>
-      <tr>
-        <td>Terminal-Bench 2 downstream success</td>
-        <td>81.8%（页面 TL;DR 中的提升前值）</td>
-        <td>86.4%</td>
-        <td>test-time scaling 与验证后达到 SOTA</td>
-      </tr>
-      <tr>
-        <td>SWE-Bench Verified</td>
-        <td>未在文本中给出同设置 judge 值</td>
-        <td>77.8%</td>
-        <td>页面顶部声明的 SOTA 结果</td>
-      </tr>
-    </tbody>
+    <caption><strong>表 1：LLM-as-a-Verifier vs LLM-as-a-Judge — 验证准确率与平局率</strong></caption>
+    <tr><th>指标</th><th>方法</th><th>k=1</th><th>k=4</th><th>k=16</th></tr>
+    <tr><td rowspan="2">验证准确率 ↑</td><td>LLM-as-a-Verifier</td><td>74.7%</td><td>77.0%</td><td>77.4%</td></tr>
+    <tr><td>LLM-as-a-Judge (Discrete)</td><td>57.0%</td><td>67.4%</td><td>70.2%</td></tr>
+    <tr><td rowspan="2">平局率 ↓</td><td>LLM-as-a-Verifier</td><td>0%</td><td>0%</td><td>0%</td></tr>
+    <tr><td>LLM-as-a-Judge (Discrete)</td><td>26.5%</td><td>11.5%</td><td>5.4%</td></tr>
   </table>
-  <p>此外，作者报告该方法可跨 harness 泛化：ForgeCode 提升到 86.4%，Terminus-Kira 到 79.4%，Terminus 2 到 71.2%。页面把这解释为方法可 “plug-and-play” 地应用于不同 agent harness 或模型。虽然这些结果来自研究页而非完整论文 PDF，页面同时说明结果来自官方 Terminal-Bench 与 SWE-Bench leaderboard，并称代码与复现材料已在 GitHub 发布。</p>
+
+  <p>Verifier 在所有 k 值下均保持 7%-17% 的准确率优势。即使在 k=16 时重复验证已部分减轻 Judge 的平局问题（平局率降至 5.4%），Verifier 仍维持 7% 的准确率优势且平局率为 0%。</p>
+
+  <p><strong>下游任务表现（测试时缩放）。</strong>在 Terminal-Bench 上使用 ForgeCode 作为智能体脚手架，采样 5 条轨迹，LLM-as-a-Verifier 将成功率从 81.8% 提升至 86.4%（SOTA）。在 SWE-Bench Verified 上，采样 3 条轨迹分别来自 Claude Opus 4.6、Gemini 3 Flash 和 Claude Opus 4.5，成功率达到 77.8%（SOTA）。</p>
+
+  <p><strong>泛化性验证。</strong>LLM-as-a-Verifier 在三种不同智能体脚手架上均表现出一致提升：ForgeCode 达 86.4%，Terminus-Kira 达 79.4%，Terminus 2 达 71.2%。作者总结其方法是 <em>"plug-and-play manner across any agent harness or model"</em>。</p>
+
+  <p><strong>缩放规律。</strong>实验表明验证准确率随着重复验证次数（1→16）和评分粒度（1→20）的增加持续提升。评分粒度的缩放通过减少量化误差使离散评分更好地近似底层连续奖励；重复验证的缩放通过集成平均消除单次评估的偏差和噪声；标准分解则通过让验证任务本身更简单、更明确来提升准确率。</p>
 
   <h2>4. 赞成什么</h2>
-  <p>本文赞成把 LLM 评价从粗粒度 judge 转向细粒度 verifier。它支持这样一种假设：评价复杂 agent trajectory 时，模型内部对多个 score token 的概率分布包含比单个离散分数更多的信息；如果把这些概率转化为期望 reward，就能更好近似连续质量差异。</p>
-  <p>本文也赞成 test-time scaling 中的候选轨迹采样与验证重排序。与只让一个模型一次性输出答案相比，多采样轨迹再用 verifier 选择，能把生成与验证分工。研究页中 “test-time scaling and verification” 将 Terminal-Bench success rate 从 81.8% 提升到 86.4%，说明 verifier 可以作为轨迹奖励模型提升下游任务成功率。</p>
-  <p>最后，本文赞成 criteria decomposition。与直接评价整条轨迹的总体质量相比，把问题拆成 Specification、Output、Errors 等更简单因素，可以降低单次判断难度，并提供更细粒度反馈。这与过程奖励模型、结果奖励模型和未来 RL verifier 方向相衔接。</p>
+
+  <p>论文明确支持和继承以下思想与方法：</p>
+
+  <p><strong>LLM 作为评估者的基本范式。</strong>论文并非否定 LLM-as-a-Judge，而是在其基础上进行改进和深化。LLM-as-a-Verifier 继承了使用 LLM 进行自动评估的可扩展性和可解释性优势（可扩展地替代人工评估、可提供详细反馈），但通过概率分布利用和细粒度评分解决了其核心缺陷。论文表态 <em>"LLM-as-a-Verifier consistently outperforms LLM-as-a-Judge"</em>，表明这是一种进化而非革命。</p>
+
+  <p><strong>测试时计算缩放（test-time scaling）。</strong>论文的核心假设——通过增加测试时的计算量（更多次验证、更细粒度评分、更多标准）可以提升评估质量——与近年来 test-time compute scaling 的研究方向一脉相承。从 k=1 到 k=16，从 G=8 到 G=20，每一次缩放都带来了验证准确率的单调提升，验证了"更多推理计算→更好结果"的范式。</p>
+
+  <p><strong>集成方法的有效性。</strong>重复验证（k=4, k=16）本质上是一种集成策略。论文的发现——<em>"scores from individual verification can be biased or noisy, and an ensemble of repeated verifications helps average out these biases"</em>——与机器学习中集成方法降低方差的经典理论相吻合。</p>
+
+  <p><strong>分解复杂任务以提升准确性。</strong>将轨迹整体评估分解为规范符合度、输出正确性和错误信号三个子维度，体现了"分而治之"的设计哲学。这与思维链（Chain-of-Thought）将复杂推理分解为中间步骤、以及结构化评估中将评估标准分解为多维评分量规的做法思路一致。</p>
+
+  <p><strong>开源与社区协作。</strong>论文将代码和数据全部开源在 GitHub 上（llm-as-a-verifier.github.io），并提供复现结果，继承了近年来 LLM 研究社区重视可复现性和开放协作的传统。</p>
 
   <h2>5. 反对什么</h2>
-  <p>本文反对把 LLM-as-a-Judge 的单个离散分数直接当作可靠奖励信号。标准 judge 的核心缺陷不是模型一定不懂任务，而是输出接口太粗：同分、tie 和量化误差会破坏轨迹排序。页面结果显示，即使 k=16 重复验证后，judge 仍有 5.4% tie，而 verifier 始终为 0。</p>
-  <p>本文也反对只依赖整体主观评分。长程轨迹的失败可能来自没有满足规格、输出格式错误、执行日志中存在 failure signal 等不同原因；直接给总体分会掩盖这些结构性差异。Verifier 的 criteria decomposition 正是对这种整体打分方式的修正。</p>
-  <p>需要注意的是，页面没有提供传统论文式 limitations 章节。可从 What’s Next 中看出当前工作仍有边界：作者计划开发更全面的 verification benchmarks，扩展对 PRMs 和 ORMs 的支持，并把 LLM-as-a-Verifier 集成进 RL training pipelines。这意味着目前结果主要展示在 Terminal-Bench 与 SWE-Bench Verified 场景，未来还需验证它在更多任务类型、更强/更弱 verifier 模型、训练期奖励学习中的稳定性和成本收益。</p>
+
+  <p>由于该作品为技术博客而非正式学术论文，明确的反对立场不多（缺少 Related Work 章节和与具体基线方法的详细对比）。以下部分为基于原文立场的归纳，部分为推断。</p>
+
+  <p><strong>反对将 argmax 离散评分作为充分的评估信号。</strong>这是论文最核心的反对立场：当 LLM 输出评分 token 的概率分布时，仅取概率最高的 token 丢弃了分布中的绝大部分信息——<em>"rather than reducing each distribution into a single discrete score, we approximate the reward of trajectories"</em>。论文通过实验表明，保留和使用完整概率分布可以将验证准确率从 57.0% 提升至 74.7%（k=1 下）。</p>
+
+  <p><strong>反对在评估中接受高平局率。</strong>在 Terminal-Bench 上 27% 的平局率意味着评估系统面对近三分之一的比较时完全无法提供有用信号。论文的设计目标之一是将平局率降至零，并通过连续奖励值的锦标赛机制实现了这一目标。这实质上否定了"平局是一个可以接受的评估输出"的假设。</p>
+
+  <p><strong>反对将整体性评分等同于细致验证。</strong>论文通过概念区分——judge 形成整体意见，verifier 确认正确性——反对了"一个好的评判者只需要输出一个总分"的简化观点。标准分解（C=3）的实验结果表明，将验证拆分为更简单、更明确的子任务可以提升准确性——<em>"decomposing trajectory verification into complementary factors improves accuracy"</em>。</p>
+
+  <p><strong>（推断）潜在局限性。</strong>博客未明确讨论该方法的局限性，但可推断：将 K 和 C 扩展会线性增加 API 调用成本（k=16 且 C=3 意味着每对比较需要 16×3=48 次独立 LLM 调用）；方法在 Terminal-Bench 和 SWE-Bench 两个代码/命令领域外的泛化性尚未验证；使用 Gemini 2.5 Flash 作为验证模型，切换到其他模型的效果未报道。</p>
 </main>
 </body>
 </html>
