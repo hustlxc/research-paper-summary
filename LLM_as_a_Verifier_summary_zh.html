@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM-as-a-Verifier 中文总结</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto;
+      max-width: 880px;
+      color: #111827;
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.68;
+    }
+    main { padding: 28px 24px 48px; }
+    h1, h2, h3 { line-height: 1.25; color: #0f172a; }
+    h1 { font-size: 26px; margin: 0 0 10px; }
+    h2 {
+      font-size: 19px;
+      margin: 28px 0 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #d1d5db;
+      page-break-after: avoid;
+    }
+    h3 { font-size: 16px; margin: 18px 0 8px; }
+    p, li { orphans: 3; widows: 3; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
+    th, td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #eef2f7;
+      color: #1f2937;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 12px;
+      margin: 14px 0 20px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+    }
+    .label { color: #4b5563; font-weight: 600; }
+    @media print {
+      body { max-width: none; font-size: 11pt; }
+      main { padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>LLM-as-a-Verifier: A General-Purpose Verification Framework</h1>
+  <section class="meta">
+    <div class="label">作者</div>
+    <div>Jacky Kwok, Shulu Li, Pranav Atreya, Yuejiang Liu, Marco Pavone, Ion Stoica, Azalia Mirhoseini</div>
+    <div class="label">来源</div>
+    <div>Notion research page；Stanford University、UC Berkeley、NVIDIA；posted April 9, 2026</div>
+    <div class="label">年份</div>
+    <div>2026</div>
+    <div class="label">链接</div>
+    <div><a href="https://llm-as-a-verifier.notion.site/">https://llm-as-a-verifier.notion.site/</a></div>
+    <div class="label">总结日期</div>
+    <div>2026-05-07</div>
+  </section>
+
+  <h2>文章摘要</h2>
+  <p>这项研究提出 LLM-as-a-Verifier，一个面向长程智能体轨迹的通用验证框架。它针对的是现有 LLM-as-a-Judge 在复杂任务评估中的一个实际瓶颈：传统 judge prompt 往往让模型输出单个离散分数 token，例如 1 到 8，再用最高概率分数作为最终评价；但在比较复杂 agent trajectories 时，这种方式容易把两个明显不同的轨迹判成同分，导致无法选择更好轨迹。页面在 Motivation 中指出，粗粒度评分在 Terminal-Bench 上导致 27% ties，这说明粗粒度评分不仅降低准确性，还直接妨碍 test-time scaling 中的候选轨迹选择。</p>
+  <p>作者把“judge”和“verifier”区分开来：judge 更像形成整体意见并作出决定，verifier 则确认某件事是否真实或正确，需要更细致的评估。基于这个区别，LLM-as-a-Verifier 不再把每次评价压缩为单个离散分数，而是从 score token 的条件概率分布中估计连续 reward，并通过三种扩展增强验证质量：增加 repeated verification 次数，扩大 score token granularity，将整体评价分解为多个 criteria。研究页的 TL;DR 称，验证准确率会随着这些维度扩展而持续提高，并报告 LLM-as-a-Verifier 在 Terminal-Bench 上达到 “78.9% pairwise verification accuracy”。</p>
+  <p>方法上，给定任务、语言模型、评价 criterion 和两个候选轨迹，框架构造包含 <code>&lt;score_A&gt;</code> 和 <code>&lt;score_B&gt;</code> 的评分提示，从两个 score token 位置抽取 top-logprobs。它对每个 criterion、每次 repeated verification、每个 score token 的概率乘以映射后的标量值，再求平均得到轨迹 reward。为了在多条候选轨迹中选择最佳答案，系统采用 round-robin tournament：每两条轨迹成对比较，reward 更高者获得一次胜利，最终选择胜场最多的轨迹。这使 verifier 可以作为 test-time trajectory reward model，在多个 agent scaffold 和模型采样轨迹之间进行重排序。</p>
+  <p>实验结果显示，LLM-as-a-Verifier 在 Terminal-Bench 2.0 和 SWE-Bench Verified 上取得强表现。页面顶部称其在 Terminal-Bench 2 上达到 86.4%，在 SWE-Bench Verified 上达到 77.8%；并说明使用 ForgeCode 和 mini-swe-agent 作为 scaffolds，Terminal-Bench 中从 Claude Opus 4.6 采样 5 条轨迹，SWE-Bench 中从 Claude Opus 4.6、Gemini 3 Flash 和 Claude Opus 4.5 各采样 3 条轨迹，Gemini 2.5 Flash 用作 verifier。核心对比中，LLM-as-a-Verifier 在 k=1、4、16 repeated verification 下分别达到 74.7%、77.0%、77.4% accuracy，tie rate 始终为 0；对应 LLM-as-a-Judge 为 57.0%、67.4%、70.2%，且仍有 26.5%、11.5%、5.4% ties。结论是：细粒度概率评分、重复验证集成和 criteria decomposition 可以把 LLM 评价器从粗糙 judge 推向更适合 agent test-time scaling 的 verifier。</p>
+
+  <h2>1. 提出问题</h2>
+  <p>本文要解决的问题是：如何为长程 agent 任务中的候选轨迹提供可靠、可区分、可扩展的验证信号。Terminal-Bench、SWE-Bench Verified 这类任务不是简单单步问答，轨迹中包含命令执行、代码修改、错误处理和最终输出。若评价器只输出单个粗粒度分数，它常常无法区分两个轨迹的细微质量差异，尤其是在两者都部分正确或部分失败时。</p>
+  <p>研究页把传统方法称为 LLM-as-a-Judge，并指出这种方法通常让模型输出 “a score token (e.g., 1–8)”。问题在于单个 token 的离散标签会产生量化误差；当两个候选轨迹都被评为 4 分时，系统无法判断哪个更值得选择。页面明确说，标准 judge “failing to discriminate between them”，这就是本文提出 verifier 的直接动机。</p>
+
+  <h2>2. 分析问题</h2>
+  <p>作者把验证失败拆解为三个来源。第一是 scoring granularity 不足：1 到 8 的离散分数太粗，会把不同质量轨迹压到同一分桶。第二是单次验证噪声：一次 LLM 判断可能受 prompt、采样、上下文截断或局部偏见影响。第三是整体评分过难：让模型一次性判断整条复杂轨迹的总体质量，会混合规格满足、输出格式、错误信号等不同因素，降低可解释性和准确性。</p>
+  <p>因此，LLM-as-a-Verifier 的分析路径不是简单换一个更强模型，而是改变评价信号的数学形式。它保留模型对每个 score token 的概率分布，而不是只取最大概率 token；它重复执行验证以平均噪声；它把 verification criteria 分解为 Specification、Output、Errors 等互补因素。页面 Takeaway 总结说，“Scaling the scoring token granularity reduces quantization error”，并认为 repeated verification 有助于平均个体验证中的偏差与噪声。</p>
+
+  <h2>3. 解决问题</h2>
+  <p>解决方案是把 LLM 评价器改造成分布式 reward estimator。给定两条轨迹 A 和 B，verifier 分别在 <code>&lt;score_A&gt;</code> 与 <code>&lt;score_B&gt;</code> 位置抽取 score token 的概率分布；每个 token 通过函数映射到标量分值；再跨 criteria 数量、重复验证次数和 score token 粒度求平均，得到轨迹 reward。为了支持更多候选轨迹，系统用 pairwise round-robin tournament 聚合比较结果，选择胜场最多的轨迹作为最终答案。</p>
+  <p>该方案可以作为 test-time scaling 的轨迹奖励模型。页面说明，在 Terminal-Bench 中使用 ForgeCode scaffold 并从 Claude Opus 4.6 采样 5 条轨迹；在 SWE-Bench 中使用 mini-swe-agent，并从 Claude Opus 4.6、Gemini 3 Flash、Claude Opus 4.5 各采样 3 条轨迹；Gemini 2.5 Flash 作为 verifier。这样，核心提升来自验证与重排序，而不是只依赖单次生成模型输出。</p>
+  <table>
+    <thead>
+      <tr>
+        <th>实验项</th>
+        <th>LLM-as-a-Judge</th>
+        <th>LLM-as-a-Verifier</th>
+        <th>说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Verification accuracy, k=1</td>
+        <td>57.0%</td>
+        <td>74.7%</td>
+        <td>单次验证已有明显提升</td>
+      </tr>
+      <tr>
+        <td>Verification accuracy, k=4</td>
+        <td>67.4%</td>
+        <td>77.0%</td>
+        <td>重复验证后仍领先</td>
+      </tr>
+      <tr>
+        <td>Verification accuracy, k=16</td>
+        <td>70.2%</td>
+        <td>77.4%</td>
+        <td>页面称 verifier 仍高 7%</td>
+      </tr>
+      <tr>
+        <td>Tie rate, k=1 / 4 / 16</td>
+        <td>26.5% / 11.5% / 5.4%</td>
+        <td>0% / 0% / 0%</td>
+        <td>概率 reward 消除同分选择失败</td>
+      </tr>
+      <tr>
+        <td>Terminal-Bench 2 downstream success</td>
+        <td>81.8%（页面 TL;DR 中的提升前值）</td>
+        <td>86.4%</td>
+        <td>test-time scaling 与验证后达到 SOTA</td>
+      </tr>
+      <tr>
+        <td>SWE-Bench Verified</td>
+        <td>未在文本中给出同设置 judge 值</td>
+        <td>77.8%</td>
+        <td>页面顶部声明的 SOTA 结果</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>此外，作者报告该方法可跨 harness 泛化：ForgeCode 提升到 86.4%，Terminus-Kira 到 79.4%，Terminus 2 到 71.2%。页面把这解释为方法可 “plug-and-play” 地应用于不同 agent harness 或模型。虽然这些结果来自研究页而非完整论文 PDF，页面同时说明结果来自官方 Terminal-Bench 与 SWE-Bench leaderboard，并称代码与复现材料已在 GitHub 发布。</p>
+
+  <h2>4. 赞成什么</h2>
+  <p>本文赞成把 LLM 评价从粗粒度 judge 转向细粒度 verifier。它支持这样一种假设：评价复杂 agent trajectory 时，模型内部对多个 score token 的概率分布包含比单个离散分数更多的信息；如果把这些概率转化为期望 reward，就能更好近似连续质量差异。</p>
+  <p>本文也赞成 test-time scaling 中的候选轨迹采样与验证重排序。与只让一个模型一次性输出答案相比，多采样轨迹再用 verifier 选择，能把生成与验证分工。研究页中 “test-time scaling and verification” 将 Terminal-Bench success rate 从 81.8% 提升到 86.4%，说明 verifier 可以作为轨迹奖励模型提升下游任务成功率。</p>
+  <p>最后，本文赞成 criteria decomposition。与直接评价整条轨迹的总体质量相比，把问题拆成 Specification、Output、Errors 等更简单因素，可以降低单次判断难度，并提供更细粒度反馈。这与过程奖励模型、结果奖励模型和未来 RL verifier 方向相衔接。</p>
+
+  <h2>5. 反对什么</h2>
+  <p>本文反对把 LLM-as-a-Judge 的单个离散分数直接当作可靠奖励信号。标准 judge 的核心缺陷不是模型一定不懂任务，而是输出接口太粗：同分、tie 和量化误差会破坏轨迹排序。页面结果显示，即使 k=16 重复验证后，judge 仍有 5.4% tie，而 verifier 始终为 0。</p>
+  <p>本文也反对只依赖整体主观评分。长程轨迹的失败可能来自没有满足规格、输出格式错误、执行日志中存在 failure signal 等不同原因；直接给总体分会掩盖这些结构性差异。Verifier 的 criteria decomposition 正是对这种整体打分方式的修正。</p>
+  <p>需要注意的是，页面没有提供传统论文式 limitations 章节。可从 What’s Next 中看出当前工作仍有边界：作者计划开发更全面的 verification benchmarks，扩展对 PRMs 和 ORMs 的支持，并把 LLM-as-a-Verifier 集成进 RL training pipelines。这意味着目前结果主要展示在 Terminal-Bench 与 SWE-Bench Verified 场景，未来还需验证它在更多任务类型、更强/更弱 verifier 模型、训练期奖励学习中的稳定性和成本收益。</p>
+</main>
+</body>
+</html>

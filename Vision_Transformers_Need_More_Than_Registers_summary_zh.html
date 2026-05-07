@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vision Transformers Need More Than Registers 论文总结</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto;
+      max-width: 880px;
+      color: #111827;
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.68;
+    }
+    main { padding: 28px 24px 48px; }
+    h1, h2, h3 { line-height: 1.25; color: #0f172a; }
+    h1 { font-size: 26px; margin: 0 0 10px; }
+    h2 {
+      font-size: 19px;
+      margin: 28px 0 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #d1d5db;
+      page-break-after: avoid;
+    }
+    h3 { font-size: 16px; margin: 18px 0 8px; }
+    p, li { orphans: 3; widows: 3; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
+    th, td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    .meta {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 12px;
+      margin: 14px 0 20px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+    }
+    .label { color: #4b5563; font-weight: 600; }
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #eef2f7;
+      color: #1f2937;
+    }
+    @media print {
+      body { max-width: none; font-size: 11pt; }
+      main { padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Vision Transformers Need More Than Registers</h1>
+  <section class="meta">
+    <div class="label">作者</div>
+    <div>Cheng Shi, Yizhou Yu, Sibei Yang</div>
+    <div class="label">来源</div>
+    <div>arXiv:2602.22394v2；School of Computing and Data Science, The University of Hong Kong；Sun Yat-sen University</div>
+    <div class="label">年份</div>
+    <div>2026</div>
+    <div class="label">链接</div>
+    <div><a href="https://arxiv.org/html/2602.22394v2">https://arxiv.org/html/2602.22394v2</a></div>
+    <div class="label">总结日期</div>
+    <div>2026-05-06</div>
+  </section>
+
+  <h2>文章摘要</h2>
+  <p>这篇论文研究 Vision Transformer 在 dense feature 下游任务中的一个反常现象：ViT 作为大规模预训练视觉表征已经成为常用基础模型，但在语义分割、开放词表检测、无监督目标发现等需要 patch 级表征的任务中，会出现注意力或特征伪影。作者指出这些问题并非只存在于某一种预训练范式，而是 “artifacts in ViTs are widely observed across different supervision paradigms and downstream tasks”。现有工作分别从 label-supervised、text-supervised、self-supervised 角度观察到注意力缺陷、文本对齐不良、高范数 token 等现象，但作者认为其共同机制尚未被充分解释，甚至 Register 这类方案只能缓解高范数表象，不能解释或解决根因。</p>
+  <p>论文的核心解释是 lazy aggregation：在只有图像级标签或图文对等粗粒度监督时，模型没有 patch 级空间监督；自然图像中背景 patch 数量又远多于前景 patch；ViT 的全局自注意力允许前景语义扩散到背景 token。于是 CLS token 为了最小化图像级损失，倾向于利用背景 patch 作为捷径来编码全局语义。摘要把这个机制概括为 “ViT uses semantically irrelevant background patches as shortcuts to represent global semantics”，并认为它由 “global attention and Coarse-grained semantic supervision” 共同驱动。为统一描述不同监督范式下的伪影，作者提出 Patch Score，即 patch feature 与 CLS token 的相似度；再提出 Point-in-Box，衡量最高 Patch Score 是否落在前景框中。Table 1 显示，ViT、DINO-ViT、OpenCLIP-ViT 的 PiB 明显低于相应 ConvNet，并且 Register 虽降低 high-norm，却没有改善 PiB。</p>
+  <p>方法上，作者提出 LazyStrike / LaSt-ViT。其思想不是加入 register token 或做测试时修补，而是在预训练中重新设计 CLS 聚合：先在通道维对 patch 特征做一维 FFT 和低通滤波，计算原始特征与低通特征的稳定性分数；再对每个通道选择 Top-K 稳定 patch 做平均，形成 CLS 表征。作者的假设是，前景区域语义更一致，在通道维低通后更稳定；背景区域语义更杂，因此更不稳定。该选择性聚合把 CLS token 锚定到前景相关 patch，从源头降低背景捷径。Fig. 5 的描述称，LaSt-ViT 后高投票 patch “consistently correspond to foreground regions”，说明 CLS 聚合从背景转向前景。</p>
+  <p>实验覆盖 label-supervised、text-supervised、self-supervised 三类 ViT，并在 12 个基准上测试。Artifact elimination 中，LazyStrike 将 ViT PiB 从 42.7 提升到 55.1，将 DINO-v1 从 44.5 提升到 69.7，将 CLIP 从 39.8 提升到 50.1，同时去除 high-norm 现象。文本监督下，CLIP ViT-B/16 的 VOC mIoU 从 49.0 提到 75.0，CLIP ViT-L/14 的 VOC mIoU 从 17.1 提到 72.4；开放词表检测/分割和无监督目标发现也取得提升。结论部分把贡献收束为：ViT 常通过背景 patch 编码全局语义，而 LaSt-ViT 的频率引导选择性聚合能让 CLS 聚焦稳定、前景相关特征，并在不同监督类型中一致减少伪影。</p>
+
+  <h2>1. 提出问题</h2>
+  <p>论文提出的问题是：为什么 ViT 在图像级预训练后能取得强分类能力，却在需要 dense feature 的下游任务中产生伪影、背景偏置和局部语义错位？作者并不满足于把现象分别归因为 attention deficit、CLIP dense alignment failure 或 high-norm token，而是追问这些现象是否有共同机制。引言中指出，既有单一方法难以全面处理这些现象，这说明已有方案缺少统一解释与统一修复路径。</p>
+  <p>具体来说，ViT 的 CLS token 被训练为图像级全局语义表征；但如果最高相似度 patch 不在前景对象上，而在背景上，那么 dense feature 会在分割、定位和开放词表任务中失真。作者把本文中的 artifacts 明确定义为 “semantically irrelevant background tokens that erroneously yield high Patch Scores”。这个定义把问题从激活值是否异常大转移到 CLS 与 patch 的语义对应是否错误。</p>
+
+  <h2>2. 分析问题</h2>
+  <p>作者先设计两个探针。Patch Score 度量 patch 与全局表示之间的相似度；Point-in-Box 度量最高分 patch 是否落在 ImageNet 单目标标注框内。这个指标设计使不同监督范式可以放在同一尺度下比较。Table 1 的结果显示，ResNet PiB 为 68.4，而 ViT 为 42.7；DINO-ResNet 为 71.1，而 DINO-ViT 为 45.3；OpenCLIP-ResNet 为 53.9，而 OpenCLIP-ViT 为 39.8。Register 后 high-norm 消失，但 OpenCLIP-ViT 的 PiB 反而从 39.8 到 37.6，支撑了 “high-norm is not the root cause of artifacts” 的判断。</p>
+  <p>机制分析分为空间和时间两个方向。空间上，Fig. 2 显示 foreground patch 集中在较低 Patch Score，background patch 支配高分尾部；去掉最高分 patch 不伤害分类，甚至 ViT-B/16 可提升 1.2%，而去掉低分 patch 会造成显著下降。时间上，Fig. 3 显示训练过程中 ViT 分类准确率上升，但 PiB 几乎保持在 0.42 到 0.44 的低水平，说明伪影不是训练后期副产物。作者据此提出两个根因：粗粒度语义监督无法提供 patch 级空间约束，全局依赖又允许前景语义扩散到背景 token。</p>
+  <p>两个验证实验进一步拆解因果。把 patch size 从 16×16 增到 28×28，背景 token 比例减少约 10%，PiB 从 0.44 升到 0.52，但 top-1 从 62% 降到 55%。把全局注意力替换为窗口注意力，PiB 也提高，但 ImageNet top-1 下降。也就是说，背景比例和全局依赖确实推动背景偏置，但简单削弱二者会损害识别性能；这为后续选择性聚合方法提供了动机。</p>
+
+  <h2>3. 解决问题</h2>
+  <p>作者提出 LaSt-ViT，即 LazyStrike ViT。方法的目标是保留 ViT 全局建模带来的分类能力，同时抑制 CLS token 对背景捷径的聚合。它把 CLS 聚合重写为频率感知过程：对所有 patch 表征在通道维做一维 FFT，用高斯权重低通滤波，再用低通后特征与原特征的差异计算稳定性分数。每个通道只选 Top-K 个最稳定 patch 做平均，得到 CLS token。论文称其为 “frequency-guided selective aggregation”，直观含义是让 CLS 更多聚合稳定、语义一致的前景 patch，而不是任由背景 patch 通过全局注意力吸收语义。</p>
+  <p>方法还给出 vote count 来解释 CLS 看向哪里：某 patch 在多少通道里进入 Top-K，投票越多表示越重要。Fig. 5 表明应用 LaSt-ViT 后，“highly voted patches are better aligned with the foreground regions”，作者据此认为模型已经学会把 CLS token 锚定到前景。下游任务迁移也直接利用这一点：无监督目标发现可以用 Patch Score 阈值产生前景 mask；文本监督 ViT 则可通过 patch feature 与文本 feature 相似度做零样本语义分割和开放词表任务。</p>
+  <table>
+    <thead>
+      <tr>
+        <th>实验项</th>
+        <th>基线</th>
+        <th>LazyStrike 后</th>
+        <th>含义</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ViT Point-in-Box</td>
+        <td>42.7</td>
+        <td>55.1（+12.4）</td>
+        <td>背景伪影显著减少，但仍未完全达到 ResNet 68.4</td>
+      </tr>
+      <tr>
+        <td>DINO-v1 Point-in-Box</td>
+        <td>44.5</td>
+        <td>69.7（+25.2）</td>
+        <td>自监督 ViT 中的定位伪影被大幅缓解</td>
+      </tr>
+      <tr>
+        <td>CLIP Point-in-Box</td>
+        <td>39.8</td>
+        <td>50.1（+10.3）</td>
+        <td>文本监督 ViT 的 patch-CLS 对齐改善</td>
+      </tr>
+      <tr>
+        <td>CLIP ViT-B/16 VOC mIoU</td>
+        <td>49.0</td>
+        <td>75.0（+26.0）</td>
+        <td>零样本语义分割明显提升</td>
+      </tr>
+      <tr>
+        <td>DINO + LazyStrike Object Discovery CorLoc</td>
+        <td>LOST 最优：VOC07 61.9、VOC12 64.0、COCO 50.7</td>
+        <td>64.4、67.6、51.6；55.9 FPS</td>
+        <td>无需重特征分解即可取得更高且更快的目标发现结果</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>这些结果支持作者的主要结论：LazyStrike 不只是降低 high-norm，而是改善 patch 与 CLS 的语义聚合路径。Table 4、Table 5、Table 6、Table 7 覆盖语义分割、开放词表检测/分割、粗分割和目标发现，结论称该方法 “achieves consistent improvements on 12 benchmarks”。需要注意的是，论文主要报告伪影消除和下游提升，没有系统讨论计算开销、预训练成本或超参数 K 在更大规模模型上的外推边界。</p>
+
+  <h2>4. 赞成什么</h2>
+  <p>论文赞成把 ViT dense feature 伪影看作一个跨监督范式的统一机制问题，而不是分别对 label-supervised、CLIP-like、DINO-like 模型做局部补丁。它支持用 Patch Score 和 Point-in-Box 将不同模型放到共同诊断框架中，从而把“高范数”“注意力缺陷”“文本对齐差”这些表面现象统一到 CLS-patch 语义错配上。</p>
+  <p>论文也赞成预训练阶段的结构性干预。Related Work 中作者强调自己的方法 “tackles the problem directly during pretraining”，并避免架构修改、后训练对齐和测试时编辑。方法层面，它支持一种前景稳定性假设：自然图像中前景信号更语义同质，背景更语义多样，因此通道低通信号下更稳定的 patch 更可能承载前景语义。实验层面，它支持这样的判断：如果 CLS 聚合被引导到前景，ViT 不仅可以缓解 artifacts，还能在原本更依赖自监督的粗分割和目标发现中出现更好的 emergent property。</p>
+
+  <h2>5. 反对什么</h2>
+  <p>论文首先反对把 Register 或 high-norm token 当作根因解释。Table 1 明确写道，“Register reduces high-norm tokens but high-norm is not the root cause of artifacts”。Related Work 进一步说，high-norm 只是 lazy behavior 后期表现，简单把高范数 token 从 feature map 移到 register token，并不能充分解决下游任务中的内在缺陷。这也是题名 “Need More Than Registers” 的直接含义。</p>
+  <p>论文还反对只在最终 attention 层、后训练阶段或测试时做修补。作者认为这些方案可能改善某个监督范式或某类任务，却不能阻止 lazy behavior 在预训练中形成。它也反对一种朴素思路：直接减少背景 token 或限制全局注意力。Fig. 4 与 Table 2 显示，这两类干预确实提高 PiB，但会降低分类准确率，说明问题不是“不要背景”或“不要全局依赖”，而是要让 CLS 学会选择性聚合有用的前景语义。论文没有设置专门的局限性章节；从实验范围看，它尚未充分回答 LazyStrike 在更大模型、更复杂视觉语言预训练和更高计算预算下的稳定性问题。</p>
+</main>
+</body>
+</html>
